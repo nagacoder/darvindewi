@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Link tamu Darvin &amp; Dewi</title>
+<style>
+@font-face{font-family:"Bodoni Moda";src:url(fonts/bodoni-moda-latin-standard-italic.woff2) format("woff2");font-weight:400 900;font-style:italic;font-display:swap}
+@font-face{font-family:"Hanken Grotesk";src:url(fonts/hanken-grotesk-latin-wght-normal.woff2) format("woff2");font-weight:100 900;font-display:swap}
+:root{--paper:#F4F2EF;--paper-2:#FBFAF8;--ink:#5A1E2B;--ink-soft:#85555F;--rule:rgba(90,30,43,.2);--field:rgba(90,30,43,.34)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.6 "Hanken Grotesk",system-ui,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{margin:0 0 6px;font:italic 400 2.25rem/1.15 "Bodoni Moda",Georgia,serif}
+.sub{margin:0 0 32px;color:var(--ink-soft)}
+label{display:block;margin:20px 0 8px;font-weight:500;font-size:.9375rem}
+small{font-weight:400;color:var(--ink-soft)}
+input,textarea{width:100%;padding:12px 14px;border:1px solid var(--field);border-radius:3px;background:var(--paper-2);color:var(--ink);font:inherit}
+textarea{min-height:150px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border:1px solid var(--ink);border-radius:999px;background:transparent;color:var(--ink);font:500 .9375rem "Hanken Grotesk",sans-serif;text-decoration:none;cursor:pointer}
+.btn--solid{background:var(--ink);color:var(--paper)}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.count{margin:36px 0 8px;color:var(--ink-soft);font-size:.9375rem}
+ul{list-style:none;margin:0;padding:0}
+li{padding:16px 0;border-top:1px solid var(--rule)}
+.name{font-weight:500}
+.url{font-size:.875rem;color:var(--ink-soft);word-break:break-all}
+li .row{margin-top:10px}
+li .btn{min-height:38px;padding:0 16px;font-size:.875rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Buat link tamu</h1>
+  <p class="sub">Tulis satu nama per baris. Setiap tamu mendapat link undangan dengan namanya sendiri di halaman pembuka.</p>
+
+  <label for="base">Alamat undangan</label>
+  <input id="base" value="https://darvindewi.com/">
+
+  <label for="names">Daftar tamu <small>(satu nama per baris)</small></label>
+  <textarea id="names" placeholder="Bapak Hendra Simanjuntak &amp; Keluarga&#10;Ibu Ratna&#10;Kevin &amp; Partner"></textarea>
+
+  <label for="tpl">Pesan WhatsApp <small>({nama} dan {link} diganti otomatis)</small></label>
+  <textarea id="tpl">Kepada Yth. {nama},
+
+Dengan penuh sukacita, kami mengabarkan pernikahan kami, Darvin & Dewi. Pernikahan kami digelar secara intimate bersama keluarga inti, dan kami memohon kehadiran Anda secara virtual.
+
+Undangan dan tautan siaran langsung:
+{link}
+
+Terima kasih atas doa restu Anda.</textarea>
+
+  <div class="row">
+    <button class="btn btn--solid" id="make" type="button">Buat link</button>
+    <button class="btn" id="csv" type="button" hidden>Unduh CSV</button>
+  </div>
+
+  <p class="count" id="count" role="status"></p>
+  <ul id="list"></ul>
+</div>
+
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  let rows = [];
+  const linkFor = (base, name) => { const u = new URL(base); u.searchParams.set('to', name); return u.toString(); };
+  const msgFor = (tpl, name, link) => tpl.split('{nama}').join(name).split('{link}').join(link);
+
+  async function copy(t) {
+    try { await navigator.clipboard.writeText(t); return true; }
+    catch (_) { const a = document.createElement('textarea'); a.value = t; document.body.append(a); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok; }
+  }
+  function btn(label, onClick, href) {
+    const b = document.createElement(href ? 'a' : 'button'); b.className = 'btn'; b.textContent = label;
+    if (href) { b.href = href; b.target = '_blank'; b.rel = 'noopener'; } else { b.type = 'button'; b.addEventListener('click', () => onClick(b)); }
+    return b;
+  }
+
+  $('#make').addEventListener('click', () => {
+    let base;
+    try { base = new URL($('#base').value.trim()).toString(); } catch (_) { $('#count').textContent = 'Alamat undangan belum valid. Contoh: https://darvindewi.com/'; return; }
+    const tpl = $('#tpl').value;
+    const names = [...new Set($('#names').value.split('\n').map(s => s.trim()).filter(Boolean))];
+    rows = names.map(name => { const link = linkFor(base, name); return { name, link, msg: msgFor(tpl, name, link) }; });
+    const list = $('#list'); list.textContent = '';
+    rows.forEach(r => {
+      const li = document.createElement('li');
+      const n = document.createElement('div'); n.className = 'name'; n.textContent = r.name;
+      const u = document.createElement('div'); u.className = 'url'; u.textContent = r.link;
+      const act = document.createElement('div'); act.className = 'row';
+      act.append(
+        btn('Salin pesan', async b => { b.textContent = (await copy(r.msg)) ? 'Pesan tersalin' : 'Gagal menyalin'; setTimeout(() => b.textContent = 'Salin pesan', 2000); }),
+        btn('Salin link', async b => { b.textContent = (await copy(r.link)) ? 'Link tersalin' : 'Gagal menyalin'; setTimeout(() => b.textContent = 'Salin link', 2000); }),
+        btn('Kirim lewat WhatsApp', null, 'https://wa.me/?text=' + encodeURIComponent(r.msg))
+      );
+      li.append(n, u, act); list.append(li);
+    });
+    $('#count').textContent = rows.length ? `${rows.length} link siap dikirim.` : 'Tulis minimal satu nama tamu dulu.';
+    $('#csv').hidden = !rows.length;
+  });
+
+  $('#csv').addEventListener('click', () => {
+    const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+    const csv = '﻿nama,link,pesan\n' + rows.map(r => [r.name, r.link, r.msg].map(q).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'link-tamu-darvin-dewi.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+})();
+</script>
+</body>
+</html>
